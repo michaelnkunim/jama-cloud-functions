@@ -1,10 +1,10 @@
+const fbadmin = require("firebase-admin");
+fbadmin.initializeApp({}, "DEFAULT");
+
 const functions = require("firebase-functions");
 const algoliaSearch = require("algoliasearch");
 const messaging = require("./messaging");
-const fbadmin = require("firebase-admin");
 const uuid = require("uuid");
-
-fbadmin.initializeApp({}, "DEFAULT");
 const firestore = fbadmin.firestore();
 const rtdb = fbadmin.database();
 const algoliaConfig = {
@@ -139,6 +139,7 @@ exports.onUserCreate = functions.firestore
 exports.onchatUpdate = functions.firestore.document("chat/{chatId}").onUpdate(
     (snapshot)=>{
       const latestData = snapshot.after.data();
+      // console.log(latestData);
       const messages = latestData.messages;
       // console.log(messages);
       if (messages.length > 0) {
@@ -155,41 +156,45 @@ exports.onchatUpdate = functions.firestore.document("chat/{chatId}").onUpdate(
           return i["notifyObject"] && i.isRead === 0;
         });
 
-        const todayUnotifiedList = messages.filter(
-            // eslint-disable-next-line max-len
-            (chat) => chat.lastNotified >= todayStart && chat.lastNotified <= todayEnd);
+        // const todayUnotifiedList = messages.filter(
+        //     // eslint-disable-next-line max-len
+        // (chat) => chat.lastNotified >= todayStart
+        // && chat.lastNotified <= todayEnd);
 
         const lastMarkedForNotif =
             markedForNotificatons[markedForNotificatons.length - 1];
         // console.log(lastMarkedForNotif);
         // console.log(todayUnotifiedList);
-        if (todayUnotifiedList.length > 0) {
-          if (lastMarkedForNotif) {
-            const newNote = {
-              "soundNotify": true,
-              "image": "{system}",
-              "emailInstruction": {
-                "template": "message_notification",
-                "receipient": null,
-              },
-              "appSender": appName,
-              "link": "chats/"+latestData.id,
-              "isRead": false,
-              "title": "Hi {{noteData.receipientName}}, You have a new message",
-              // eslint-disable-next-line max-len
-              "smsMessage": "Hi {{noteData.receipientName}}, {{noteData.senderName}} sent you a message on {{noteData.appName}}. Click on this link {{noteData.chatUrl}} to view on {{noteData.hostUrl}} ",
-              "type": "user",
-              "content": lastMarkedForNotif.content,
-              "createdAt": Date.now(),
-              "actionPhrase": "view",
-              "channels": lastMarkedForNotif.notifyObject.channels,
-              "dynamicJson": lastMarkedForNotif.noteData,
-              "domain": appDomain,
-              "id": uuid.v4(),
-              "inAppNotified": false,
-              "dateRead": "",
-              "soundNotified": false,
-            };
+        // if (todayUnotifiedList.length > 0) {
+        if (lastMarkedForNotif) {
+          const newNote = {
+            "soundNotify": true,
+            "image": "{system}",
+            "emailInstruction": {
+              "template": "message_notification",
+              "receipient": null,
+            },
+            "appSender": appName,
+            "isRead": false,
+            "title": "New message from {{noteData.senderName}}",
+            // eslint-disable-next-line max-len
+            "smsMessage": "Hi {{noteData.receipientName}}, {{noteData.senderName}} sent you a message on {{noteData.appName}}. Click on this link {{noteData.chatUrl}} to view on {{noteData.hostUrl}} ",
+            "type": "user",
+            "content": lastMarkedForNotif.content,
+            "createdAt": Date.now(),
+            "actionPhrase": "view",
+            "channels": lastMarkedForNotif.notifyObject.channels,
+            "dynamicJson": lastMarkedForNotif.noteData,
+            "link": lastMarkedForNotif.noteData.chatUrl,
+            "domain": appDomain,
+            "id": uuid.v4(),
+            "inAppNotified": false,
+            "dateRead": "",
+            "soundNotified": false,
+          };
+          // eslint-disable-next-line max-len
+          console.log("pushNotified : ", lastMarkedForNotif.pushNotified, Date.now());
+          if (lastMarkedForNotif.pushNotified === false) {
             // console.log(newNote);
             // eslint-disable-next-line max-len
             const docRef = firestore.collection("user/"+lastMarkedForNotif.notifyObject.target+"/notes/");
@@ -197,5 +202,6 @@ exports.onchatUpdate = functions.firestore.document("chat/{chatId}").onUpdate(
           }
         }
       }
+      // }
       return true;
     });

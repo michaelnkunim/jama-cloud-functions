@@ -4,12 +4,16 @@ const hbs = require("handlebars");
 // const fs = require("fs");
 
 const endPoint = "https://jama-api1-lzdsvs7hqq-uc.a.run.app/api";
+// eslint-disable-next-line max-len
+const FCM_SERVER_KEY= "AAAAQt7SjCM:APA91bE_rrIvj8xGDzgqIE8x-i3EGXkT6qJoUj6RYbPGMWnD3zIfQwkoyUVeg6fHVUu3UH04eG5AefoEGQ6lriPk_7WJ_mdLTQkI_HopgK0HNrAv94VTZMzFXb62HZFz-cP4-I8TZ-zV";
+const fcmEndPoint = "https://fcm.googleapis.com/fcm/send";
 
 fbadmin.initializeApp();
 const db = fbadmin.firestore();
 
 module.exports = {
   processMessageToChannels(newNote, userId) {
+    // console.log(newNote);
     let userData = {};
     const getUser = db.doc("user/"+userId).get();
     getUser.then((res) => {
@@ -39,7 +43,7 @@ module.exports = {
       if (newNote.soundNotify === true) {
         newNote.soundNotified = false;
       }
-
+      newNote.channels.email = false;
       if (newNote.channels.email === true && jsonObject.userData.email) {
         const templatesRef = db.collection("system_email_templates");
         const snapshot = templatesRef.where("templateName", "==",
@@ -91,7 +95,7 @@ module.exports = {
           });
         });
       }
-
+      newNote.channels.sms = false;
       if (newNote.channels.sms === true && userData.phoneNumber) {
         if (newNote.smsMessage) {
           const patchSMSMessage = hbs.compile(newNote.smsMessage);
@@ -109,11 +113,69 @@ module.exports = {
           console.log(error, "error messages");
         });
       }
+
+      const sendPushNotes = (req, uid) => {
+        const reqData = req;
+        const receipeients = reqData.deviceTokens;
+        // console.log(uid);
+        receipeients.forEach((receipient) => {
+          const sendData = {
+            "notification": reqData.notification,
+            "data": reqData.notification,
+            "to": receipient,
+            "collapseKey": uid,
+            "messageId": uid,
+          };
+
+          // fbadmin.messaging().
+          //     sendToDevice(receipient,
+          //         sendData, {collapseKey: uid});
+          req.token = receipient;
+          axios.post(fcmEndPoint, sendData,
+              {headers: {"Authorization": `Bearer ${FCM_SERVER_KEY}`}}).
+              then((res_) => {
+                // console.log(res_.data);
+                // res.json(res_.data);
+                console.log("Successfully sent message:");
+              }).catch(function(error) {
+                console.log("Error sending message:", error);
+              });
+        });
+      };
+      // console.log(newNote);
+
+      if (newNote.channels.devicePush == true &&
+         userData.deviceNotification &&
+        userData.deviceNotification.length > 0) {
+        userData.deviceNotification.forEach((element) => {
+          // console.log(newNote);
+          const sendData = {
+            "deviceTokens": [element.token],
+            "notification": {
+              "title": newNote.title,
+              "body": newNote.content,
+              "mutable_content": "true",
+              "sound": "Tri-tone",
+              "click_action": newNote.dynamicJson.dl,
+              "priority": "high",
+              "badge": "1",
+              "icon": newNote.dynamicJson.noteImage ||
+              newNote.dynamicJson.senderAvatar,
+              "dl": newNote.link,
+              "collapseKey": newNote.uid,
+              "messageId": newNote.uid,
+            },
+            "webpush": {
+              "fcm_options": {
+                "link": newNote.dynamicJson.dl,
+              },
+            },
+          };
+          sendPushNotes(sendData, newNote.uid);
+        });
+      }
+      newNote.pushNotified = true;
       docRef.update(newNote);
-    // implement this later
-    // if (newNote.channels.devicePush === true){
-    //    console.log('pushData');
-    //  }
     });
   },
 
