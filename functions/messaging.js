@@ -1,21 +1,19 @@
-const fbadmin = require("firebase-admin");
+/* eslint-disable max-len */
+const {app} = require("./firebase-init");
 const axios = require("axios");
 const hbs = require("handlebars");
-// const config = require("config.json");
-// const fs = require("fs");
-
+const environment = require("./environement");
+const uuid = require("uuid");
 const endPoint = "https://jama-api1-lzdsvs7hqq-uc.a.run.app/api";
 // eslint-disable-next-line max-len
 const FCM_SERVER_KEY= "AAAAQt7SjCM:APA91bE_rrIvj8xGDzgqIE8x-i3EGXkT6qJoUj6RYbPGMWnD3zIfQwkoyUVeg6fHVUu3UH04eG5AefoEGQ6lriPk_7WJ_mdLTQkI_HopgK0HNrAv94VTZMzFXb62HZFz-cP4-I8TZ-zV";
 const fcmEndPoint = "https://fcm.googleapis.com/fcm/send";
-
-fbadmin.initializeApp();
-const db = fbadmin.firestore();
+const firestore = app.firestore();
 
 const processMessageToChannels = (newNote, userId) => {
   // console.log(newNote);
   let userData = {};
-  const getUser = db.doc("user/"+userId).get();
+  const getUser = firestore.doc("user/"+userId).get();
   getUser.then((res) => {
     userData = res.data();
     const ts = Date.now();
@@ -39,18 +37,21 @@ const processMessageToChannels = (newNote, userId) => {
 
 
     // update document with Dynamic data
-    const docRef = db.doc("user/"+userId+"/notes/"+newNote.uid);
+    const docRef = firestore.doc("user/"+userId+"/notes/"+newNote.uid);
     if (newNote.soundNotify === true) {
       newNote.soundNotified = false;
     }
-    newNote.channels.email = false;
+    // console.log(newNote);
+    // console.log(jsonObject);
+    // console.log(newNote.emailInstruction.template);
+    // newNote.channels.email = false;
     if (newNote.channels.email === true && jsonObject.userData.email) {
-      const templatesRef = db.collection("system_email_templates");
+      const templatesRef = firestore.collection("system_email_templates");
       const snapshot = templatesRef.where("templateName", "==",
           newNote.emailInstruction.template).get();
       snapshot.then((res) => {
         res.forEach((doc) => {
-          const blocksRef = db.doc("systemdata/emailBlocks").get();
+          const blocksRef = firestore.doc("systemdata/emailBlocks").get();
           blocksRef.then((res) => {
             const blocks = res.data().blocks;
             let blockStructure = res.data().block_structure;
@@ -82,7 +83,6 @@ const processMessageToChannels = (newNote, userId) => {
                 "Body": {"Html": {"Data": html}},
               },
             };
-
             axios.post(endPoint + "/sendEmail", sendData).then((res) => {
               // console.log(res);
             }, (error) => {
@@ -95,7 +95,6 @@ const processMessageToChannels = (newNote, userId) => {
         });
       });
     }
-    newNote.channels.sms = false;
     if (newNote.channels.sms === true && userData.phoneNumber) {
       if (newNote.smsMessage) {
         const patchSMSMessage = hbs.compile(newNote.smsMessage);
@@ -127,10 +126,6 @@ const processMessageToChannels = (newNote, userId) => {
           "collapseKey": uid,
           "messageId": uid,
         };
-
-        // fbadmin.messaging().
-        //     sendToDevice(receipient,
-        //         sendData, {collapseKey: uid});
         req.token = receipient;
         axios.post(fcmEndPoint, sendData,
             {headers: {"Authorization": `Bearer ${FCM_SERVER_KEY}`}}).
@@ -215,4 +210,45 @@ const sendPromotionReminder = (promotionData, listing, user) => {
   console.log(listing);
 };
 
-module.exports = {processMessageToChannels, sendPromotionReminder};
+const triggerWelcomeMessage = (userData, userId) => {
+  const notesRef = firestore.collection("user/" + userId + "/notes/");
+  const newNote = {
+    "soundNotify": true,
+    "image": "{system}",
+    "emailInstruction": {
+      "template": "seller_welcome_note",
+      "receipient": null,
+    },
+    "appSender": environment.appName,
+    "isRead": false,
+    "title": "Welcome to Jama",
+    "smsMessage": "Hi {{noteData.receipientName}}, Welcome to Jama. Click on this link {{noteData.dl}} to view on {{noteData.hostUrl}} ",
+    "type": "user",
+    "content": "Welcome to Jama",
+    "createdAt": Date.now(),
+    "actionPhrase": "view",
+    "channels": {
+      "devicePush": true,
+      "email": true,
+      "sms": true,
+    },
+    "dynamicJson": {
+      "dl": environment.appDomain,
+      "receipientName": userData.username,
+      "noteImage": "{system}",
+      "senderAvatar": "{system}",
+    },
+    "link": environment.appDomain,
+    "domain": environment.appDomain,
+    "id": uuid.v4(),
+    "inAppNotified": false,
+    "dateRead": "",
+    "soundNotified": false,
+    "noteGroup": "welcome",
+  };
+  const docRef = firestore.doc("user/" + userId);
+  notesRef.add(newNote);
+  docRef.update({actionTriggerList: {sent_welcome_message: true}});
+};
+
+module.exports = {processMessageToChannels, sendPromotionReminder, triggerWelcomeMessage};
