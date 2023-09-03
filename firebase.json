@@ -27,25 +27,35 @@
       "port": 7075
     },
     "auth": {
-      "port": 9099
+      "port": 9099,
+      "host": "127.0.0.1"
     },
     "functions": {
-      "port": 5001
+      "port": 5001,
+      "host": "127.0.0.1"
     },
     "firestore": {
-      "port": 9098
+      "port": 9098,
+      "host": "127.0.0.1"
     },
     "database": {
-      "port": 9097
+      "port": 9097,
+      "host": "127.0.0.1"
     },
     "storage": {
-      "port": 9096
+      "port": 9096,
+      "host": "127.0.0.1"
     },
     "ui": {
-      "enabled": true
+      "enabled": true,
+      "host": "127.0.0.1"
     },
     "pubsub":{
-      "port":9095
+      "port":9095,
+      "host": "127.0.0.1"
+    },
+    "logging":{
+      "host": "127.0.0.1"
     }
   },
   "hosting": {
