@@ -10,9 +10,10 @@ exports.updateAppVersion = functions.https.onRequest((request, response) => {
       response.status(405).send("Method Not Allowed");
     } else {
       const collectionName = request.body.app+"-versions";
-      request.body.timestamp = new Date().getTime();
-      const result = await firestore.collection(collectionName).add(request.body);
-      response.status(200).send(`update version to ${request.body.version} with update ID: ${result.id}`);
+      const payload = {...request.body};
+      payload.timestamp = new Date().getTime();
+      await firestore.collection(collectionName).add(payload);
+      response.status(200).send(payload);
     }
   });
 });

@@ -103,7 +103,7 @@ const processMessageToChannels = (newNote, userId) => {
 
       const sendData = {
         phoneNumbers: [userData.phoneNumber],
-        message: newNote.smsMessage || newNote.content,
+        message: newNote.smsMessage || stripHtmlTags(newNote.content),
         sender_id: "Jama",
       };
       axios.post(endPoint + "/sendSMS", sendData).then((res)=>{
@@ -175,6 +175,7 @@ const processMessageToChannels = (newNote, userId) => {
     docRef.update(newNote);
   });
 };
+
 
 const sendPromotionReminder = (promotionData, listing, user) => {
   user.firstname = user.username.split(" ")[0];
@@ -249,6 +250,10 @@ const triggerWelcomeMessage = (userData, userId) => {
   const docRef = firestore.doc("user/" + userId);
   notesRef.add(newNote);
   docRef.update({actionTriggerList: {sent_welcome_message: true}});
+};
+
+const stripHtmlTags = (input) => {
+  return input.replace(/<[^>]*>/g, "");
 };
 
 module.exports = {processMessageToChannels, sendPromotionReminder, triggerWelcomeMessage};

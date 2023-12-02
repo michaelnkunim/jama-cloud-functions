@@ -105,3 +105,4 @@ exports.onChatDelete = functions.firestore.document("chat/{chatId}").onDelete(
       return 1;
     },
 );
+
