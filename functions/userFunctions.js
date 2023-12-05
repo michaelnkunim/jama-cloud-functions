@@ -156,7 +156,7 @@ exports.onUserUpdate = functions.firestore
         } catch (error) {
           console.log(error);
         }
-        if (userData && userData.actionTriggerList && userData.actionTriggerList.sent_welcome_message === false) {
+        if (userData && userData.actionTriggerList && !userData.actionTriggerList.sent_welcome_message) {
           messaging.triggerWelcomeMessage(userData, userId);
         }
         this.syncUserChats(userData);

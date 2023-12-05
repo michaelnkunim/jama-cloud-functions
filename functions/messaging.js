@@ -148,8 +148,8 @@ const processMessageToChannels = (newNote, userId) => {
         const sendData = {
           "deviceTokens": [element.token],
           "notification": {
-            "title": newNote.title,
-            "body": newNote.content,
+            "title": stripHtmlTags(newNote.title),
+            "body": stripHtmlTags(newNote.content),
             "mutable_content": "true",
             "sound": "Tri-tone",
             "click_action": newNote.dynamicJson.dl,
@@ -223,7 +223,7 @@ const triggerWelcomeMessage = (userData, userId) => {
     "appSender": environment.appName,
     "isRead": false,
     "title": "Welcome to Jama",
-    "smsMessage": "Hi {{noteData.receipientName}}, Welcome to Jama. Click on this link {{noteData.dl}} to view on {{noteData.hostUrl}} ",
+    "smsMessage": "Hi {{noteData.receipientName}}, Welcome to Jama. Click on this link {{noteData.dl}} to view",
     "type": "user",
     "content": "Welcome to Jama",
     "createdAt": Date.now(),
@@ -249,7 +249,15 @@ const triggerWelcomeMessage = (userData, userId) => {
   };
   const docRef = firestore.doc("user/" + userId);
   notesRef.add(newNote);
-  docRef.update({actionTriggerList: {sent_welcome_message: true}});
+  const startDay = {
+    seconds: 1660738904,
+  };
+  const time = new Date().fromSeconds(startDay.seconds)
+      .setZone("Africa/UTC")
+      .startOf("day");
+  if (userData && userData.actionTriggerList && !userData.actionTriggerList.sent_welcome_message) {
+    docRef.update({actionTriggerList: {sent_welcome_message: true}, timestamp: time});
+  }
 };
 
 const stripHtmlTags = (input) => {
