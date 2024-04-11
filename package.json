@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "fb-em" :"bash free-ports.sh && firebase emulators:start"
+  },
   "dependencies": {
     "cors": "^2.8.5"
   }

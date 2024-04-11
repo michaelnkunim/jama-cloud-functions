@@ -7,7 +7,20 @@ const util = require("./util");
 const firestore = app.firestore();
 const client = algoliaSearch(environment.algoliaConfig.app, environment.algoliaConfig.key);
 const indexProd = client.initIndex(environment.indexProdName);
-
+const cors = require("cors")({origin: true});
+const Typesense = require("typesense");
+const typesenseIndex = "listings";
+const typeSenseClient = new Typesense.Client({
+  "nodes": [
+    {
+      "host": "4dnacr9bgxmj3w78p-1.a1.typesense.net",
+      "port": "443",
+      "protocol": "https",
+    },
+  ],
+  "apiKey": "T5NJLgD9PPByF9bqXcrP0mmCq4SixsLR",
+  "connectionTimeoutSeconds": 10,
+});
 
 const updateUserListings = (userId) => {
   // get all listings where user === userId
@@ -52,6 +65,11 @@ exports.addToListingsIndex = functions.firestore
       });
       listing.objectID = objectID;
       updateUserListings(data.user);
+      try {
+        typeSenseClient.collections(typesenseIndex).documents().create(listing);
+      } catch (error) {
+        console.log("typesense error", error);
+      }
       return indexProd.saveObject(listing);
     });
 
@@ -65,6 +83,7 @@ exports.updateListingIndexItem = functions.firestore
           if (!res.exists) {
             console.log("user not found");
             indexProd.deleteObject(snapshot.after.id);
+            typeSenseClient.collections(typesenseIndex).documents().delete(snapshot.after.id);
             // delete from firestore
             firestore.doc("listings/"+snapshot.after.id).delete();
             return 1;
@@ -103,15 +122,34 @@ exports.updateListingIndexItem = functions.firestore
       updateSingleAdStatus(data, objectID);
 
       listing.objectID = objectID;
-      // console.log("update listing " + objectID);
-      return indexProd.partialUpdateObject(listing, {
-        createIfNotExists: true,
-      });
+      if (data.active === true) {
+        try {
+          typeSenseClient.collections(typesenseIndex).documents().create(listing);
+        } catch (error) {
+          console.log("typesense error", error);
+        }
+
+        return indexProd.partialUpdateObject(listing, {
+          createIfNotExists: true,
+        });
+      } else {
+        try {
+          typeSenseClient.collections(typesenseIndex).documents().delete(objectID);
+        } catch (error) {
+          console.log(error);
+        }
+        return indexProd.deleteObject(objectID);
+      }
     });
 
 exports.removeItemFromListingIndex = functions.firestore
     .document("listings/{listingId}")
     .onDelete((snapshot) => {
+      try {
+        typeSenseClient.collections(typesenseIndex).documents().delete(snapshot.id);
+      } catch (error) {
+        console.log(error);
+      }
       try {
         console.log(snapshot.id);
         // console.log("listing deleted", snapshot.data());
@@ -171,3 +209,21 @@ exports.updateAdStatus = functions.pubsub.schedule("every 60 minutes").
       });
       return 1;
     });
+
+exports.deleteFromIndex = functions.https.onRequest((request, response) => {
+  cors(request, response, async () => {
+    if (request.method !== "POST") {
+      response.status(405).send("Method Not Allowed");
+    } else {
+      const {body} = request;
+      try {
+        typeSenseClient.collections(typesenseIndex).documents().delete(body.id);
+      } catch (error) {
+        console.log(error);
+      }
+      indexProd.deleteObject(body.id);
+      response.status(200).send({success: true, message: "listing removed from index successfully"});
+    }
+  });
+});
+

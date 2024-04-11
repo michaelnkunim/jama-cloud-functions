@@ -9,7 +9,11 @@ const client = algoliaSearch(environment.algoliaConfig.app, environment.algoliaC
 const indexProd = client.initIndex(environment.indexProdName);
 
 const {onUserCreate, onUserDelete, onUserUpdate, createSeller} = require("./userFunctions");
-const {addToListingsIndex, removeItemFromListingIndex, updateListingIndexItem, updateAdStatus} = require("./listingFunctions");
+const {addToListingsIndex, removeItemFromListingIndex,
+  updateListingIndexItem, updateAdStatus,
+  deleteFromIndex: deleteFromAlgolia,
+  addToIndexViaHttp,
+} = require("./listingFunctions");
 const {onchatUpdate, onChatDelete} = require("./chatFunctions");
 const {updateAppVersion} = require("./appManagementFunctions");
 
@@ -29,7 +33,7 @@ const syncIndexs = functions.firestore.document("triggers/{uid}").onCreate(
       if (data.type = "listings" && data.action === "sync") {
         // get the listing
         firestore.doc("listings/"+data.uid).get().then((res)=>{
-          if (!res.exists) {
+          if (!res.exists()) {
             console.log("listing not found");
             indexProd.deleteObject(data.uid);
             // remove from triggers
@@ -43,8 +47,8 @@ const syncIndexs = functions.firestore.document("triggers/{uid}").onCreate(
 
 module.exports = {
   onUserCreate, onUserDelete, onUserUpdate, createSeller,
-  addToListingsIndex, removeItemFromListingIndex, updateListingIndexItem, updateAdStatus,
+  addToListingsIndex, removeItemFromListingIndex, updateListingIndexItem, updateAdStatus, deleteFromAlgolia,
   onchatUpdate, onChatDelete,
   notificationsTrigger, syncIndexs,
-  updateAppVersion,
+  updateAppVersion, addToIndexViaHttp,
 };

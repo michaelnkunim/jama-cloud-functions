@@ -4,6 +4,7 @@ const axios = require("axios");
 const hbs = require("handlebars");
 const environment = require("./environement");
 const uuid = require("uuid");
+const luxon = require("luxon");
 const endPoint = "https://jama-api1-lzdsvs7hqq-uc.a.run.app/api";
 // eslint-disable-next-line max-len
 const FCM_SERVER_KEY= "AAAAQt7SjCM:APA91bE_rrIvj8xGDzgqIE8x-i3EGXkT6qJoUj6RYbPGMWnD3zIfQwkoyUVeg6fHVUu3UH04eG5AefoEGQ6lriPk_7WJ_mdLTQkI_HopgK0HNrAv94VTZMzFXb62HZFz-cP4-I8TZ-zV";
@@ -252,9 +253,10 @@ const triggerWelcomeMessage = (userData, userId) => {
   const startDay = {
     seconds: 1660738904,
   };
-  const time = new Date().fromSeconds(startDay.seconds)
-      .setZone("Africa/UTC")
-      .startOf("day");
+
+  const time = luxon.DateTime.fromMillis(startDay.seconds * 1000, {zone: "Africa/UTC"}).startOf("day");
+
+
   if (userData && userData.actionTriggerList && !userData.actionTriggerList.sent_welcome_message) {
     docRef.update({actionTriggerList: {sent_welcome_message: true}, timestamp: time});
   }

@@ -2,7 +2,7 @@
 const {app} = require("./firebase-init");
 const functions = require("firebase-functions");
 const algoliaSearch = require("algoliasearch");
-const messaging = require("./messaging");
+// const messaging = require("./messaging");
 const cors = require("cors")({origin: true});
 const environment = require("./environement");
 const firestore = app.firestore();
@@ -157,7 +157,7 @@ exports.onUserUpdate = functions.firestore
           console.log(error);
         }
         if (userData && userData.actionTriggerList && !userData.actionTriggerList.sent_welcome_message) {
-          messaging.triggerWelcomeMessage(userData, userId);
+        //  messaging.triggerWelcomeMessage(userData, userId);
         }
         this.syncUserChats(userData);
         console.log("user update", userId);
